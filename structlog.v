@@ -121,7 +121,7 @@ pub fn (r Record) field(name string, value Value) Record {
 	return r.append(Field{ name: name, value: value })
 }
 
-// field adds new message field to a record and returns the modified record.
+// message adds new message field to a record and returns the modified record.
 // This is a shothand for `field('message', 'message text')`.
 pub fn (r Record) message(s string) Record {
 	return r.field('message', s)
