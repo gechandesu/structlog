@@ -144,6 +144,25 @@ pub fn (r Record) send() {
 	r.channel <- r
 }
 
+pub struct Timestamp {
+pub mut:
+	// format sets the format of datettime for logs.
+	// TimestampFormat values map 1-to-1 to the date formats provided by `time.Time`.
+	// If .custom format is selected the timestamp_custom field must be set.
+	format TimestampFormat = .rfc3339
+
+	// custom sets the custom datetime string format if format is set to .custom.
+	// See docs for Time.format_custom() fn from stadnard `time` module.
+	custom string
+
+	// If local is true the local time will be used instead of UTC.
+	local bool
+}
+
+fn (t Timestamp) as_value() Value {
+	return timestamp(t.format, t.custom, t.local)
+}
+
 pub enum TimestampFormat {
 	default
 	rfc3339
@@ -167,20 +186,23 @@ pub:
 	// This value cannot be changed after logger initialization.
 	level Level = .info
 
+	// timestamp holds the timestamp settings.
+	timestamp Timestamp
+
 	add_level     bool = true // if true add `level` field to all log records.
 	add_timestamp bool = true // if true add `timestamp` field to all log records.
 
 	// timestamp_format sets the format of datettime for logs.
 	// TimestampFormat values ​​map 1-to-1 to the date formats provided by `time.Time`.
 	// If .custom format is selected the timestamp_custom field must be set.
-	timestamp_format TimestampFormat = .rfc3339
+	timestamp_format TimestampFormat = .rfc3339 @[deprecated: 'use `timestamp` instead']
 
 	// timestamp_custom sets the custom datetime string format if timestapm_format is
 	// set to .custom. See docs for Time.format_custom() fn from stadnard `time` module.
-	timestamp_custom string
+	timestamp_custom string @[deprecated: 'use `timestamp` instead']
 
 	// If timestamp_local is true the local time will be used instead of UTC.
-	timestamp_local bool
+	timestamp_local bool @[deprecated: 'use `timestamp` instead']
 
 	// handler holds a log record handler object which is used to process logs.
 	handler RecordHandler = TextHandler{
@@ -239,11 +261,20 @@ pub fn new(config LogConfig) StructuredLog {
 
 			mut extra_fields := []Field{}
 
+			mut timestamp := logger.timestamp
+			mut timestamp_old := Timestamp{
+				format: logger.timestamp_format
+				custom: logger.timestamp_custom
+				local:  logger.timestamp_local
+			}
+			if timestamp != timestamp_old {
+				timestamp = timestamp_old
+			}
+
 			if logger.add_timestamp {
 				extra_fields << Field{
 					name:  'timestamp'
-					value: timestamp(logger.timestamp_format, logger.timestamp_custom,
-						logger.timestamp_local)
+					value: timestamp.as_value()
 				}
 			}
 

@@ -4,8 +4,11 @@ import structlog
 fn main() {
 	// Initialize logger with edited timestamp.
 	log := structlog.new(
-		timestamp_format: .unix
-		handler:          structlog.JSONHandler{
+		// timestamp_format: .unix
+		timestamp: structlog.Timestamp{
+			format: .unix
+		}
+		handler:   structlog.JSONHandler{
 			writer: os.stdout()
 		}
 	)
