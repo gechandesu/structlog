@@ -4,7 +4,6 @@ import structlog
 fn main() {
 	// Initialize logger with edited timestamp.
 	log := structlog.new(
-		// timestamp_format: .unix
 		timestamp: structlog.Timestamp{
 			format: .unix
 		}

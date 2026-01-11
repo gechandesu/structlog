@@ -96,9 +96,8 @@ pub fn (r Record) append(field ...Field) Record {
 	mut fields_orig := unsafe { r.fields }
 	fields_orig << field
 	return Record{
-		channel: r.channel
-		level:   r.level
-		fields:  &fields_orig
+		...r
+		fields: &fields_orig
 	}
 }
 
@@ -110,9 +109,8 @@ pub fn (r Record) prepend(field ...Field) Record {
 	mut new_fields := unsafe { field }
 	new_fields << r.fields
 	return Record{
-		channel: r.channel
-		level:   r.level
-		fields:  new_fields
+		...r
+		fields: new_fields
 	}
 }
 
