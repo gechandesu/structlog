@@ -114,15 +114,21 @@ pub fn (r Record) prepend(field ...Field) Record {
 	}
 }
 
+// add adds new field with given name and value to a record and returns the modified record.
+pub fn (r Record) add(name string, value Value) Record {
+	return r.append(field(name, value))
+}
+
 // field adds new field with given name and value to a record and returns the modified record.
+@[deprecated: 'use add() instead']
 pub fn (r Record) field(name string, value Value) Record {
 	return r.append(Field{ name: name, value: value })
 }
 
 // message adds new message field to a record and returns the modified record.
-// This is a shothand for `field('message', 'message text')`.
+// This is a shothand for `add('message', 'message text')`.
 pub fn (r Record) message(s string) Record {
-	return r.field('message', s)
+	return r.add('message', s)
 }
 
 // error adds an error as new field to a record and returns the modified record.
@@ -351,6 +357,9 @@ pub struct JSONHandler {
 pub fn (mut h JSONHandler) handle(rec Record) ! {
 	str := json.encode[map[string]Value](rec.fields.as_map()) + '\n'
 	h.writer.write(str.bytes())!
+	if h.writer is os.File {
+		h.writer.flush()
+	}
 }
 
 pub struct TextHandler {
@@ -411,7 +420,7 @@ pub fn (mut h TextHandler) handle(rec Record) ! {
 						buf.write_byte(` `)
 						buf.write_string(quote(v.str()))
 						if j != field.value.len {
-							buf.write_byte(` `)
+							buf.write_string(', ')
 						}
 					}
 				} else {
@@ -422,12 +431,19 @@ pub fn (mut h TextHandler) handle(rec Record) ! {
 				}
 			}
 		}
-		if i != rec.fields.len {
-			buf.write_byte(` `)
+		if i + 1 != rec.fields.len {
+			if i in [0, 1] {
+				buf.write_byte(` `)
+			} else {
+				buf.write_string(', ')
+			}
 		}
 	}
 	buf.write_byte(`\n`)
 	h.writer.write(buf)!
+	if h.writer is os.File {
+		h.writer.flush()
+	}
 }
 
 @[inline]
@@ -439,4 +455,79 @@ fn quote(input string) string {
 		return '"' + input + '"'
 	}
 	return "'" + input + "'"
+}
+
+// struct_adapter generates the log fields list form a flat struct.
+// Supported struct field attrubutes:
+//
+// | Attribute           | Meaning                                    |
+// | ------------------- | ------------------------------------------ |
+// | `@[skip]`           | Do not process field at all                |
+// | `@[structlog: '-']` | Do not process field at all                |
+// | `@[omitempty]`      | Do not process field if it has empty value |
+//
+// Note: Nested struct fields are not supported.
+pub fn struct_adapter[T](s T) []Field {
+	$if T !is $struct {
+		$compile_error('structlog.struct_adapted: only struct types is accepted')
+	}
+	mut fields := []Field{}
+	mut skip := false
+	mut omitempty := false
+	$for f in s.fields {
+		skip = false
+		for attr in f.attrs {
+			if attr == 'skip' || (attr.starts_with('structlog: ')
+				&& attr.all_after('structlog: ').trim('"\'') == '-') {
+				skip = true
+			}
+			if attr == 'omitempty' {
+				omitempty = true
+			}
+		}
+		value := s.$(f.name)
+		if omitempty {
+			skip = check_is_empty(value) or { false }
+		}
+		if !skip {
+			fields << field(f.name, value)
+		}
+	}
+	return fields
+}
+
+fn check_is_empty[T](val T) ?bool {
+	$if val is string {
+		if val == '' {
+			return false
+		}
+	} $else $if val is $int || val is $float {
+		if val == 0 {
+			return false
+		}
+	} $else $if val is ?string {
+		return val ? != ''
+	} $else $if val is ?int {
+		return val ? != 0
+	} $else $if val is ?f64 || val is ?f32 {
+		return val ? != 0.0
+	}
+	return true
+}
+
+// field creates new `Field` with given name and value.
+// Map values will be transformed to `map[string]Value`.
+pub fn field[T](name string, value T) Field {
+	$if value is $struct {
+		$compile_error('structlog.field: cannot pass struct as field value')
+	}
+	$if value is $map {
+		mut value_map := map[string]Value{}
+		for k, v in value {
+			value_map[k.str()] = Value(v)
+		}
+		return Field{name, value_map}
+	} $else {
+		return Field{name, value}
+	}
 }
