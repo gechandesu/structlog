@@ -431,6 +431,7 @@ pub fn (mut h TextHandler) handle(rec Record) ! {
 				}
 			}
 		}
+
 		if i + 1 != rec.fields.len {
 			if i in [0, 1] {
 				buf.write_byte(` `)
