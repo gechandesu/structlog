@@ -9,8 +9,7 @@ import x.json2 as json
 
 pub interface RecordHandler {
 mut:
-	// handle method must prepare the Record for writing and write it.
-	handle(rec Record) !
+	handle(rec Record) ! // handle method must prepare the Record for writing and write it.
 }
 
 pub enum Level {
@@ -28,12 +27,11 @@ pub type Value = i8
 	| i32
 	| i64
 	| int
-	| isize
 	| u8
 	| u16
 	| u32
 	| u64
-	| usize
+	| uint
 	| f32
 	| f64
 	| string
@@ -49,12 +47,11 @@ pub fn (v Value) str() string {
 		i32 { v.str() }
 		i64 { v.str() }
 		int { v.str() }
-		isize { v.str() }
 		u8 { v.str() }
 		u16 { v.str() }
 		u32 { v.str() }
 		u64 { v.str() }
-		usize { v.str() }
+		uint { v.str() }
 		f32 { v.str() }
 		f64 { v.str() }
 		string { v.str() }
@@ -507,11 +504,11 @@ fn check_is_empty[T](val T) ?bool {
 			return false
 		}
 	} $else $if val is ?string {
-		return val ? != ''
+		return val? != ''
 	} $else $if val is ?int {
-		return val ? != 0
+		return val? != 0
 	} $else $if val is ?f64 || val is ?f32 {
-		return val ? != 0.0
+		return val? != 0.0
 	}
 	return true
 }
